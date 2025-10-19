@@ -1,0 +1,31 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "Document verification backend",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/varunpm-ai-ai/Document_integrity_verification_system_using_Cryptography.git"
+  },
+  "keywords": [
+    "integrity",
+    "verify",
+    "69"
+  ],
+  "author": "Siddarth",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/varunpm-ai-ai/Document_integrity_verification_system_using_Cryptography/issues"
+  },
+  "homepage": "https://github.com/varunpm-ai-ai/Document_integrity_verification_system_using_Cryptography#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
+}
