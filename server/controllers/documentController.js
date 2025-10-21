@@ -4,24 +4,33 @@ import fs from "fs";
 
 // Post /upload
 export const uploadDocument = async (req, res) => {
-    try {
-        const fileBuffer = fs.readFileSync(req.file.path);
-        const hash = createHash('sha256').update(fileBuffer).digest('hex');
+  try {
+    if (!req.files || req.files.length === 0)
+      return res.status(400).json({ error: "No files uploaded" });
 
-        const doc = await Document.create({
-            filename: req.file.filename,
-            originalname: req.file.originalname,
-            hash,
-            size: req.file.size,
-            mimetype: req.file.mimetype,
-            path: req.file.path,
-        });
+    const uploadedDocs = [];
 
-        res.json({ message: "File Uploaded successfully", document: doc });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
+    for (const file of req.files) {
+      const fileBuffer = fs.readFileSync(file.path);
+      const hash = createHash("sha256").update(fileBuffer).digest("hex");
+
+      const doc = await Document.create({
+        filename: file.filename,
+        originalname: file.originalname,
+        hash,
+        size: file.size,
+        mimetype: file.mimetype,
+        path: file.path,
+      });
+
+      uploadedDocs.push(doc);
     }
+
+    res.json({ message: "Files uploaded successfully", documents: uploadedDocs });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // Post /verify
@@ -63,39 +72,67 @@ export const getDocumentById = async (req, res) => {
 
 // DELETE /documents/:id
 export const deleteDocument = async (req, res) => {
-  const doc = await Document.findByIdAndDelete(req.params.id);
-  if (!doc) return res.status(404).json({ message: "Not found" });
-  res.json({ message: "Deleted successfully" });
+  try {
+    const { id } = req.params;
+    const deletedDoc = await Document.findByIdAndDelete(id);
+    if (!deletedDoc) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+    res.json({ message: "Document deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // PUT /documents/:id
 export const updateDocument = async (req, res) => {
-    try {
-        const doc = await Document.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-        });
-        res.json(doc);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
+  try {
+    const { id } = req.params;
+    const { filename } = req.body;
+
+    const updatedDoc = await Document.findByIdAndUpdate(
+      id,
+      { filename },
+      { new: true }
+    );
+
+    if (!updatedDoc) {
+      return res.status(404).json({ message: "Document not found" });
     }
+
+    res.json(updatedDoc);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // Post /document/:id
 export const shareDocument = async (req, res) => {
-    try {
-        const token = crypto.randomBytes(8).toString('hex');
-        const doc = await Document.findByIdAndUpdate(
-            req.params.id, 
-            { shareToken: token }, 
-            { new: true }
-        );
-        res.json({ shareLink: `/share/${token}`, document: doc });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
+  try {
+    const { id } = req.params;
+
+    const document = await Document.findById(id);
+    if (!document) {
+      return res.status(404).json({ message: "Document not found" });
     }
-}
+
+    // Generate a unique share token (e.g., hash of docId + timestamp)
+    const shareToken = crypto
+      .createHash("sha256")
+      .update(id + Date.now().toString())
+      .digest("hex");
+
+    // Optionally, store this share token in the document model
+    document.shareToken = shareToken;
+    await document.save();
+
+    const shareableLink = `http://localhost:5000/api/share/${shareToken}`;
+    res.json({ shareableLink });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 // POST /collaborators/:id
 export const addCollaborators = async (req, res) => {

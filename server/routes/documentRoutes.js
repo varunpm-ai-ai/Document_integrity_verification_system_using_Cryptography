@@ -15,7 +15,7 @@ import {
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-router.post("/upload", upload.single("file"), uploadDocument);
+router.post("/upload", upload.array("file"), uploadDocument);
 router.post("/verify", verifyDocument);
 router.get("/documents", getAllDocuments);
 router.get("/documents/:id", getDocumentById);

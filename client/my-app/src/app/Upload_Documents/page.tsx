@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, ChangeEvent  } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -22,34 +22,77 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import axios from "axios";
+import { AxiosProgressEvent } from "axios";
 
 const page = () => {
   const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
+  // on drag
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
 
+  // on drag leave
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  // on drop
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
+    const droppedFiles = Array.from(e.dataTransfer.files) as File[];
     setFiles((prev) => [...prev, ...droppedFiles]);
+
+    if (droppedFiles.length > 0) {
+    setUploading(true);           
+    uploadFiles(droppedFiles);    
+  }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
-    setFiles((prev) => [...prev, ...selectedFiles]);
+  // upload files
+  const uploadFiles = async (files: File[]) => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("file", file));
+
+  try {
+    const response = await axios.post("http://localhost:5000/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (progressEvent: AxiosProgressEvent) => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percentCompleted);
+        }
+      },
+    });
+
+    console.log("Upload success:", response.data);
+  } catch (err) {
+    console.error("Upload failed:", err);
+  } finally {
+    setUploading(false);
+  }
   };
+
+  // file change
+const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const fileList = e.target.files;
+  if (!fileList || fileList.length === 0) return;
+
+  const filesArray = Array.from(fileList);
+  setFiles(filesArray);       
+  setUploading(true);         
+  uploadFiles(filesArray);    
+};
 
   return (
     <main className=" w-full ">
@@ -139,14 +182,14 @@ const page = () => {
                       <Button variant="destructive">Stop</Button>
                     </div>
                   </div>
-                  <Progress value={33} className="mt-1" />
+                  <Progress value={uploadProgress} className="mt-1" />
+                  <span className="text-sm text-gray-500">{uploadProgress}%</span>
                 </div>
               ) : (
                 <div className="w-full ">
                   <div className="flex justify-between items-center ">
                     <span> Card Content</span>
                     <div className="space-x-4">
-                      <Button variant="destructive">Delete</Button>
                       <Button variant="outline">Done</Button>
                     </div>
                   </div>
