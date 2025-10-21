@@ -116,6 +116,7 @@ export const shareDocument = async (req, res) => {
       return res.status(404).json({ message: "Document not found" });
     }
 
+    // Generate a unique share token 
     const shareToken = crypto
       .createHash("sha256")
       .update(id + Date.now().toString())
