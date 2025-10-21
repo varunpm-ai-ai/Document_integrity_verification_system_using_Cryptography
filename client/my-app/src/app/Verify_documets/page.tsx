@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/card";
 import Image from "next/image";
 import cryptoVerifyImage from "../../../public/crypto-verify.png";
+import crypto from "crypto";
+import { Button } from "@/components/ui/button";
+import CryptoJS from "crypto-js";
 
 const page = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -42,13 +45,39 @@ const page = () => {
     e.preventDefault();
     setIsDragging(false);
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    setFiles((prev) => [...prev, ...droppedFiles]);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) setFiles([droppedFile]);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
     setFiles((prev) => [...prev, ...selectedFiles]);
+  };
+
+  const computeFileHash = async (file: File) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer as any);
+    const hash = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
+    return hash;
+  };
+
+  const handleVerify = async () => {
+    if (!files.length) return alert("Select a file first");
+    const hash = await computeFileHash(files[0]);
+
+    try {
+      const res = await fetch("http://localhost:5000/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash }),
+      });
+
+      const data = await res.json();
+      setVerified(data.valid);
+    } catch (err) {
+      console.error(err);
+      alert("Error verifying document");
+    }
   };
 
   return (
@@ -126,22 +155,30 @@ const page = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Document</CardTitle>
-                <CardDescription>
-                  {Verified ? (
-                    <div className="flex">
-                      <span>
-                        <Check />
-                      </span>
-                      Verified
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <span>
-                        <X />
-                      </span>
-                      Not Verified
-                    </div>
-                  )}
+                <CardDescription className="flex justify-between items-center">
+                  <div>
+                    {Verified ? (
+                      <div className="flex">
+                        <span>
+                          <Check />
+                        </span>
+                        Verified
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <span>
+                          <X />
+                        </span>
+                        Not Verified
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Button className=" w-full" onClick={handleVerify}>
+                      Verify Document
+                    </Button>
+                  </div>
                 </CardDescription>
               </CardHeader>
               <div className="mt-2">
@@ -150,10 +187,10 @@ const page = () => {
               <CardContent className="py-4 ">
                 <div className="w-full h-62 relative overflow-hidden rounded-lg">
                   <Image
-                    src={cryptoVerifyImage}
+                    src={files[0] ? URL.createObjectURL(files[0]) : cryptoVerifyImage.src}
                     alt="Verifying document using cryptography"
                     fill
-                    className="object-cover border border-dashed border-purple-600 "
+                    className="object-cover border border-dashed border-purple-600"
                   />
                 </div>
               </CardContent>
